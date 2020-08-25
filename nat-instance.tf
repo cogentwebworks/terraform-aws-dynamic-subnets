@@ -1,6 +1,5 @@
 module "nat_instance_label" {
-  enabled    = var.enabled
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.17.0"
+  source     = "git::https://github.com/cogentwebworks/terraform-null-label.git?ref=edge"
   context    = module.label.context
   attributes = distinct(compact(concat(module.label.attributes, ["nat", "instance"])))
 }
