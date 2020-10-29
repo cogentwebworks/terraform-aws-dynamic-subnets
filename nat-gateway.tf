@@ -1,7 +1,9 @@
 module "nat_label" {
-  source     = "git::https://github.com/cogentwebworks/terraform-null-label.git?ref=edge"
-  context    = module.label.context
-  attributes = distinct(compact(concat(module.label.attributes, ["nat"])))
+  source = "git::https://github.com/cogentwebworks/terraform-null-label.git?ref=edge"
+
+  attributes = ["nat"]
+
+  context = module.this.context
 }
 
 locals {
@@ -12,22 +14,13 @@ locals {
 }
 
 resource "aws_eip" "default" {
-  count = var.enabled ? local.nat_gateway_eip_count : 0
+  count = local.enabled ? local.nat_gateway_eip_count : 0
   vpc   = true
 
   tags = merge(
     module.private_label.tags,
     {
-      "Name" = format(
-        "%s%s%s",
-        module.private_label.id,
-        var.delimiter,
-        replace(
-          element(var.availability_zones, count.index),
-          "-",
-          var.delimiter
-        )
-      )
+      "Name" = format("%s%s%s", module.private_label.id, local.delimiter, local.az_map[element(var.availability_zones, count.index)])
     }
   )
 
@@ -37,23 +30,14 @@ resource "aws_eip" "default" {
 }
 
 resource "aws_nat_gateway" "default" {
-  count         = var.enabled ? local.nat_gateways_count : 0
+  count         = local.enabled ? local.nat_gateways_count : 0
   allocation_id = element(local.gateway_eip_allocations, count.index)
   subnet_id     = element(aws_subnet.public.*.id, count.index)
 
   tags = merge(
     module.nat_label.tags,
     {
-      "Name" = format(
-        "%s%s%s",
-        module.nat_label.id,
-        var.delimiter,
-        replace(
-          element(var.availability_zones, count.index),
-          "-",
-          var.delimiter
-        )
-      )
+      "Name" = format("%s%s%s", module.nat_label.id, local.delimiter, local.az_map[element(var.availability_zones, count.index)])
     }
   )
 
@@ -63,7 +47,7 @@ resource "aws_nat_gateway" "default" {
 }
 
 resource "aws_route" "default" {
-  count                  = var.enabled ? local.nat_gateways_count : 0
+  count                  = local.enabled ? local.nat_gateways_count : 0
   route_table_id         = element(aws_route_table.private.*.id, count.index)
   nat_gateway_id         = element(aws_nat_gateway.default.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
